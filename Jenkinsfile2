@@ -2,10 +2,13 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonarkey') // Jenkins secret text credential ID
+        SONAR_TOKEN = credentials('jenkins-sonar-token') 
+        DOCKER_CREDS = credentials('docker-hub-token')
+        IMAGE = "ranjitha001/my-ci-app"
     }
 
     stages {
+
         stage('Code Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Venkiemc/sonarqube-jenkins-project.git'
@@ -14,9 +17,9 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarserver') { // 'sonarserver' is the name you configured
+                withSonarQubeEnv('sonar-local') {
                     bat """
-                        "C:\\Program Files\\sonar-scanner\\bin\\sonar-scanner.bat" ^
+                        "C:\\sonar-scanner\\bin\\sonar-scanner.bat" ^
                         -Dsonar.projectKey=demo-check ^
                         -Dsonar.projectName="SonarQube Jenkins Demo" ^
                         -Dsonar.projectVersion=1.0 ^
@@ -24,6 +27,52 @@ pipeline {
                         -Dsonar.login=%SONAR_TOKEN%
                     """
                 }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                script {
+                    timeout(time: 2, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "❌ Quality Gate failed: ${qg.status}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                bat """
+                    echo Building Docker image...
+                    docker build -t %IMAGE%:%BUILD_NUMBER% .
+                """
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                bat """
+                    echo Logging in to DockerHub...
+                    echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
+
+                    echo Pushing image...
+                    docker push %IMAGE%:%BUILD_NUMBER%
+                """
+            }
+        }
+
+        stage('Deploy Locally') {
+            steps {
+                bat """
+                    echo Stopping old container if exists...
+                    docker rm -f my-ci-app || true
+
+                    echo Starting new container...
+                    docker run -d --name my-ci-app %IMAGE%:%BUILD_NUMBER%
+                """
             }
         }
     }
