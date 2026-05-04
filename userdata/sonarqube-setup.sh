@@ -35,10 +35,10 @@ systemctl restart postgresql
 # Install SonarQube
 mkdir -p /sonarqube/
 cd /sonarqube/
-curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-25.5.0.107428.zip
+curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube- 26.4.0.121862.zip
 apt-get install unzip -y
-unzip -o sonarqube-25.5.0.107428.zip -d /opt/
-mv /opt/sonarqube-25.5.0.107428/ /opt/sonarqube
+unzip -o sonarqube- 26.4.0.121862.zip -d /opt/
+mv /opt/sonarqube- 26.4.0.121862/ /opt/sonarqube
 
 # Create user and assign ownership
 groupadd sonar
